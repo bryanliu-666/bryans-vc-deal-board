@@ -1,0 +1,13 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+.vercel/
+*.log
+*backup*.json
+*export*.json
+private/
+data/
+

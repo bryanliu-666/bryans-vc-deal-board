@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#faf9f7" />
+    <meta
+      name="description"
+      content="A private, local-first deal board for sharing selected opportunities."
+    />
+    <title>Bryan's VC Deal Board</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">B</div>
+          <div>
+            <h1>Bryan's VC Deal Board</h1>
+            <p>Private, local-first deal sharing</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="button button-secondary" id="copy-selected" type="button" disabled>
+            <span aria-hidden="true">&#10697;</span>
+            Copy selected
+            <span class="selection-count" id="selection-count">0</span>
+          </button>
+          <button class="button button-secondary" id="data-menu-button" type="button">
+            Data &amp; backup
+          </button>
+          <button class="button button-primary" id="add-deal" type="button">
+            <span aria-hidden="true">+</span>
+            Add deal
+          </button>
+        </div>
+      </header>
+
+      <main>
+        <section class="toolbar" aria-label="Deal controls">
+          <label class="search-field">
+            <span class="search-icon" aria-hidden="true"></span>
+            <span class="sr-only">Search deals</span>
+            <input id="search" type="search" placeholder="Search deals" autocomplete="off" />
+            <button class="clear-search" id="clear-search" type="button" aria-label="Clear search" hidden>&times;</button>
+          </label>
+
+          <div class="filter-group" aria-label="Deal filters">
+            <label>
+              <span class="sr-only">Filter by raising status</span>
+              <select id="status-filter">
+                <option value="">All statuses</option>
+                <option value="Raising">Raising</option>
+                <option value="Raising soon">Raising soon</option>
+                <option value="Not raising">Not raising</option>
+                <option value="Unknown">Unknown</option>
+              </select>
+            </label>
+            <label>
+              <span class="sr-only">Filter by tier</span>
+              <select id="tier-filter">
+                <option value="">All tiers</option>
+                <option value="1">Tier 1</option>
+                <option value="2">Tier 2</option>
+                <option value="3">Tier 3</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <div class="result-row">
+          <p id="result-count">0 deals</p>
+          <button class="text-button" id="clear-filters" type="button" hidden>Clear filters</button>
+        </div>
+
+        <section class="deal-grid" id="deal-grid" aria-live="polite"></section>
+      </main>
+
+      <footer>
+        Designed by
+        <a href="https://www.linkedin.com/in/bryanchangjiangliu/" target="_blank" rel="noreferrer">Bryan Liu</a>,
+        a venture capital investor at Alumni Ventures.
+      </footer>
+    </div>
+
+    <div class="menu-popover" id="data-menu" hidden>
+      <div class="menu-copy">
+        <strong>Your data stays in this browser</strong>
+        <span>Download a backup before clearing browser data or changing computers.</span>
+      </div>
+      <button id="export-data" type="button">Download backup</button>
+      <button id="import-data" type="button">Restore backup</button>
+      <input id="import-file" type="file" accept="application/json,.json" hidden />
+    </div>
+
+    <dialog class="deal-dialog" id="deal-dialog">
+      <form method="dialog" id="deal-form">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow" id="dialog-eyebrow">New deal</p>
+            <h2 id="dialog-title">Add a deal</h2>
+          </div>
+          <button class="icon-button" id="close-dialog" type="button" aria-label="Close">&times;</button>
+        </div>
+
+        <div class="form-grid">
+          <label class="field field-wide">
+            <span>Company</span>
+            <input name="company" required maxlength="100" placeholder="Company name" />
+          </label>
+          <label class="field field-wide">
+            <span>Website</span>
+            <input name="website" type="text" inputmode="url" maxlength="300" placeholder="https://company.com" />
+          </label>
+          <label class="field field-wide">
+            <span>One-liner</span>
+            <textarea name="oneLiner" rows="2" maxlength="300" placeholder="What the company does, in one clear sentence"></textarea>
+          </label>
+          <label class="field">
+            <span>Stage</span>
+            <input name="stage" maxlength="60" placeholder="Series A" />
+          </label>
+          <label class="field">
+            <span>Raising status</span>
+            <select name="raisingStatus">
+              <option value="Unknown">Unknown</option>
+              <option value="Raising">Raising</option>
+              <option value="Raising soon">Raising soon</option>
+              <option value="Not raising">Not raising</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Round size</span>
+            <input name="roundSize" maxlength="80" placeholder="$5M" />
+          </label>
+          <label class="field">
+            <span>Valuation</span>
+            <input name="valuation" maxlength="80" placeholder="$25M pre-money" />
+          </label>
+          <label class="field field-wide">
+            <span>Lead investor</span>
+            <input name="leadInvestor" maxlength="120" placeholder="Leave blank if unknown" />
+          </label>
+          <label class="field">
+            <span>Tier</span>
+            <select name="tier">
+              <option value="1">Tier 1</option>
+              <option value="2" selected>Tier 2</option>
+              <option value="3">Tier 3</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Tags</span>
+            <input name="tags" maxlength="180" placeholder="AI, Fintech" />
+          </label>
+          <label class="field field-wide">
+            <span>Shareable blurb</span>
+            <textarea
+              name="blurb"
+              rows="7"
+              maxlength="3000"
+              placeholder="One bullet per line. Keep it concise and factual."
+            ></textarea>
+            <small>One bullet per line. Bullets are added automatically.</small>
+          </label>
+        </div>
+
+        <div class="dialog-actions">
+          <button class="button button-danger" id="delete-deal" type="button" hidden>Delete</button>
+          <div class="dialog-actions-right">
+            <button class="button button-secondary" id="cancel-dialog" type="button">Cancel</button>
+            <button class="button button-primary" type="submit">Save deal</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="confirm-dialog" id="confirm-dialog">
+      <form method="dialog">
+        <h2>Delete this deal?</h2>
+        <p>This removes it from this browser. Download a backup first if you may need it later.</p>
+        <div class="dialog-actions-right">
+          <button class="button button-secondary" value="cancel">Cancel</button>
+          <button class="button button-danger" value="confirm">Delete</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+    <template id="empty-template">
+      <div class="empty-state">
+        <div class="empty-mark" aria-hidden="true">+</div>
+        <h2>No deals yet</h2>
+        <p>Add the first company you want to present or share.</p>
+        <button class="button button-primary" type="button" data-empty-add>Add deal</button>
+      </div>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
