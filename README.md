@@ -14,11 +14,11 @@ Here it is: the Deal Board. It is intentionally small, local-first, and easy to 
 
 ## What it does
 
-- Add, edit, search, filter, and delete deals.
-- Track stage, raising status, round size, valuation, lead investor, tier, tags, a one-liner, and a shareable blurb.
-- Select several deals and copy them in a clean format for Gmail, WhatsApp, iMessage, or another messaging app.
-- Keep data in the current browser with no account, server, or external database.
-- Download and restore a JSON backup.
+- Keep every deal you want to remember in one clean place.
+- See what each company does and the key round details at a glance.
+- Find the right deal quickly when another investor asks what you are seeing.
+- Pick a few deals and copy a clean, ready-to-send summary into email, WhatsApp, or iMessage.
+- Keep your data in your own browser and download a backup whenever you need one.
 
 ## Start
 
