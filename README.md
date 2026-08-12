@@ -2,7 +2,11 @@
 
 Designed by [Bryan Liu](https://www.linkedin.com/in/bryanchangjiangliu/), a venture capital investor at Alumni Ventures.
 
-A small, local-first web app for keeping a clean, presentation-ready list of deals and copying selected opportunities into email or messaging apps.
+Every VC runs into the same deal-flow problem. A promising company goes into Notion today, another gets buried in Slack tomorrow, and the next one ends up somewhere in an email thread. A few weeks later, we know we saw something interesting, but we can no longer remember where we put it.
+
+I had the same problem. I have no technical background, but I wanted one simple, presentable place to keep the deals I care about and share them cleanly with other investors. So I decided to vibe-code it for myself.
+
+Here it is: the Deal Board. It is intentionally small, local-first, and easy to make your own.
 
 ![License](https://img.shields.io/badge/license-MIT-2f2e2b)
 ![No backend](https://img.shields.io/badge/backend-none-6b6862)
