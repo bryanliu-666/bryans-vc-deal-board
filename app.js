@@ -1,7 +1,10 @@
-const STORAGE_KEY = "bryans-vc-deal-board:v1";
+const LEGACY_STORAGE_KEY = "bryans-vc-deal-board:v1";
 
 const state = {
-  deals: loadDeals(),
+  deals: [],
+  revision: null,
+  loaded: false,
+  saving: false,
   selectedIds: new Set(),
   editingId: null,
   query: "",
@@ -27,6 +30,7 @@ const elements = {
   exportData: document.querySelector("#export-data"),
   importData: document.querySelector("#import-data"),
   importFile: document.querySelector("#import-file"),
+  openDataFolder: document.querySelector("#open-data-folder"),
   resultCount: document.querySelector("#result-count"),
   search: document.querySelector("#search"),
   selectionCount: document.querySelector("#selection-count"),
@@ -37,21 +41,76 @@ const elements = {
 
 let toastTimer;
 
-function loadDeals() {
+function isDealLike(value) {
+  return Boolean(value && typeof value === "object" && typeof value.company === "string");
+}
+
+async function requestJson(url, options) {
+  const requestOptions = { ...(options || {}) };
+  const method = String(requestOptions.method || "GET").toUpperCase();
+  const headers = new Headers(requestOptions.headers || {});
+  if (method !== "GET" && method !== "HEAD") headers.set("X-Deal-Board", "1");
+  requestOptions.headers = headers;
+  const response = await fetch(url, requestOptions);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data.error || "The local database could not be updated.");
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+
+async function persistDeals(deals) {
+  return requestJson("/api/deals", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ deals, revision: state.revision }),
+  });
+}
+
+async function initialize() {
   try {
-    const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const data = await requestJson("/api/deals");
+    state.deals = data.deals;
+    state.revision = data.revision;
+
+    const legacy = readLegacyBrowserDeals();
+    if (!state.deals.length && legacy.length) {
+      const migrated = await persistDeals(legacy);
+      state.deals = migrated.deals;
+      state.revision = migrated.revision;
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+      showToast("Your browser deals were moved into the Excel database");
+    }
+
+    state.loaded = true;
+    elements.addDeal.disabled = false;
+    render();
+  } catch (error) {
+    renderStartupError(error.message);
+  }
+}
+
+function readLegacyBrowserDeals() {
+  try {
+    const value = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) || "[]");
     return Array.isArray(value) ? value.filter(isDealLike) : [];
   } catch {
     return [];
   }
 }
 
-function isDealLike(value) {
-  return Boolean(value && typeof value === "object" && typeof value.company === "string");
-}
-
-function saveDeals() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.deals));
+function renderStartupError(message) {
+  elements.dealGrid.replaceChildren();
+  const empty = elements.emptyTemplate.content.cloneNode(true);
+  empty.querySelector("h2").textContent = "The local database is not running";
+  empty.querySelector("p").textContent = "Close this page, then open Start Deal Board again from the project folder.";
+  const button = empty.querySelector("[data-empty-add]");
+  button.textContent = "Try again";
+  button.addEventListener("click", () => window.location.reload());
+  elements.dealGrid.append(empty);
+  elements.resultCount.textContent = message || "Could not reach the local database";
 }
 
 function normalizeUrl(value) {
@@ -333,17 +392,28 @@ function formDeal() {
   };
 }
 
-function saveDeal(event) {
+async function saveDeal(event) {
   event.preventDefault();
-  if (!elements.dealForm.reportValidity()) return;
+  if (!elements.dealForm.reportValidity() || state.saving) return;
   const deal = formDeal();
   const index = state.deals.findIndex((item) => item.id === deal.id);
-  if (index >= 0) state.deals[index] = deal;
-  else state.deals.unshift(deal);
-  saveDeals();
-  closeDealDialog();
-  render();
-  showToast(index >= 0 ? `${deal.company} updated` : `${deal.company} added`);
+  const nextDeals = [...state.deals];
+  if (index >= 0) nextDeals[index] = deal;
+  else nextDeals.unshift(deal);
+
+  setSaving(true);
+  try {
+    const saved = await persistDeals(nextDeals);
+    state.deals = saved.deals;
+    state.revision = saved.revision;
+    closeDealDialog();
+    render();
+    showToast(index >= 0 ? `${deal.company} updated in Excel` : `${deal.company} added to Excel`);
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setSaving(false);
+  }
 }
 
 async function deleteDeal() {
@@ -354,12 +424,29 @@ async function deleteDeal() {
   });
   if (result !== "confirm") return;
   const deal = state.deals.find((item) => item.id === state.editingId);
-  state.deals = state.deals.filter((item) => item.id !== state.editingId);
-  state.selectedIds.delete(state.editingId);
-  saveDeals();
-  closeDealDialog();
-  render();
-  showToast(`${deal?.company || "Deal"} deleted`);
+  const nextDeals = state.deals.filter((item) => item.id !== state.editingId);
+  setSaving(true);
+  try {
+    const saved = await persistDeals(nextDeals);
+    state.deals = saved.deals;
+    state.revision = saved.revision;
+    state.selectedIds.delete(state.editingId);
+    closeDealDialog();
+    render();
+    showToast(`${deal?.company || "Deal"} deleted; an Excel backup was saved`);
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setSaving(false);
+  }
+}
+
+function setSaving(value) {
+  state.saving = value;
+  const submit = elements.dealForm.querySelector('button[type="submit"]');
+  submit.disabled = value;
+  submit.textContent = value ? "Saving..." : "Save deal";
+  elements.deleteDeal.disabled = value;
 }
 
 function clearFilters() {
@@ -429,21 +516,14 @@ function toggleDataMenu() {
 }
 
 function exportData() {
-  const backup = {
-    app: "Bryan's VC Deal Board",
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    deals: state.deals,
-  };
-  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
   const link = document.createElement("a");
-  const date = new Date().toISOString().slice(0, 10);
-  link.href = URL.createObjectURL(blob);
-  link.download = `vc-deal-board-backup-${date}.json`;
+  link.href = "/api/database";
+  link.download = "VC Deal Board.xlsx";
+  document.body.append(link);
   link.click();
-  URL.revokeObjectURL(link.href);
+  link.remove();
   elements.dataMenu.hidden = true;
-  showToast("Backup downloaded");
+  showToast("Excel copy downloaded");
 }
 
 async function importData(event) {
@@ -451,16 +531,30 @@ async function importData(event) {
   event.target.value = "";
   if (!file) return;
   try {
-    const parsed = JSON.parse(await file.text());
-    const deals = Array.isArray(parsed) ? parsed : parsed.deals;
-    if (!Array.isArray(deals) || !deals.every(isDealLike)) throw new Error("Invalid backup");
-    state.deals = deals;
+    const restored = await requestJson("/api/restore", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "X-Database-Revision": state.revision,
+      },
+      body: file,
+    });
+    state.deals = restored.deals;
+    state.revision = restored.revision;
     state.selectedIds.clear();
-    saveDeals();
     render();
-    showToast(`${deals.length} ${deals.length === 1 ? "deal" : "deals"} restored`);
-  } catch {
-    showToast("This file is not a valid deal-board backup");
+    showToast(`${restored.deals.length} ${restored.deals.length === 1 ? "deal" : "deals"} restored from Excel`);
+  } catch (error) {
+    showToast(error.message || "This is not a valid Deal Board Excel file");
+  }
+}
+
+async function openDataFolder() {
+  try {
+    await requestJson("/api/open-data-folder", { method: "POST" });
+    elements.dataMenu.hidden = true;
+  } catch (error) {
+    showToast(error.message);
   }
 }
 
@@ -487,6 +581,7 @@ elements.dataMenuButton.addEventListener("click", (event) => {
   toggleDataMenu();
 });
 elements.exportData.addEventListener("click", exportData);
+elements.openDataFolder.addEventListener("click", openDataFolder);
 elements.importData.addEventListener("click", () => elements.importFile.click());
 elements.importFile.addEventListener("change", importData);
 elements.dealForm.addEventListener("submit", saveDeal);
@@ -528,4 +623,4 @@ document.addEventListener("click", (event) => {
   }
 });
 
-render();
+initialize();

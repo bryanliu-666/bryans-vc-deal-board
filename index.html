@@ -19,7 +19,7 @@
           <div class="brand-mark" aria-hidden="true">B</div>
           <div>
             <h1>Bryan's VC Deal Board</h1>
-            <p>Private, local-first deal sharing</p>
+            <p>Saved to your local Excel database</p>
           </div>
         </div>
 
@@ -32,7 +32,7 @@
           <button class="button button-secondary" id="data-menu-button" type="button">
             Data &amp; backup
           </button>
-          <button class="button button-primary" id="add-deal" type="button">
+          <button class="button button-primary" id="add-deal" type="button" disabled>
             <span aria-hidden="true">+</span>
             Add deal
           </button>
@@ -88,12 +88,13 @@
 
     <div class="menu-popover" id="data-menu" hidden>
       <div class="menu-copy">
-        <strong>Your data stays in this browser</strong>
-        <span>Download a backup before clearing browser data or changing computers.</span>
+        <strong>Your deals are saved on this computer</strong>
+        <span>Master database: data/VC Deal Board.xlsx. The previous version is backed up before every change.</span>
       </div>
-      <button id="export-data" type="button">Download backup</button>
-      <button id="import-data" type="button">Restore backup</button>
-      <input id="import-file" type="file" accept="application/json,.json" hidden />
+      <button id="open-data-folder" type="button">Open database folder</button>
+      <button id="export-data" type="button">Download an Excel copy</button>
+      <button id="import-data" type="button">Restore from Excel</button>
+      <input id="import-file" type="file" accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx" hidden />
     </div>
 
     <dialog class="deal-dialog" id="deal-dialog">
@@ -181,7 +182,7 @@
     <dialog class="confirm-dialog" id="confirm-dialog">
       <form method="dialog">
         <h2>Delete this deal?</h2>
-        <p>This removes it from this browser. Download a backup first if you may need it later.</p>
+        <p>This removes it from the master Excel file. An automatic backup will be saved first.</p>
         <div class="dialog-actions-right">
           <button class="button button-secondary" value="cancel">Cancel</button>
           <button class="button button-danger" value="confirm">Delete</button>
